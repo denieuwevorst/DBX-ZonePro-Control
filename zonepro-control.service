@@ -1,0 +1,23 @@
+[Unit]
+Description=ZonePRO Zone Control
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=zonepro
+Group=zonepro
+WorkingDirectory=/opt/zonepro-control
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+# Basic hardening -- remove/loosen if it causes trouble on your setup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/zonepro-control
+
+[Install]
+WantedBy=multi-user.target
