@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#19191b">
+<title>Config &middot; ZonePRO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="config.css">
+</head>
+<body class="config-page">
+
+<div class="config-wrap">
+  <div class="config-top">
+    <a class="back-link" href="/">&larr; Bediening</a>
+    <h1 class="config-title">config.json</h1>
+  </div>
+
+  <p class="config-hint">
+    Volledige inhoud van <code>config.json</code>. Opslaan overschrijft het bestand
+    op de server &mdash; er wordt eerst automatisch een backup gemaakt.
+    IP-adres of poort gewijzigd? Dan wordt de verbinding met de ZonePRO
+    meteen opnieuw opgezet.
+  </p>
+
+  <textarea id="editor" class="config-editor" spellcheck="false" aria-label="config.json"></textarea>
+
+  <div class="config-toolbar">
+    <button id="saveBtn" class="btn btn-primary" type="button">Opslaan</button>
+    <button id="reloadBtn" class="btn" type="button">Herladen van schijf</button>
+    <span id="statusMsg" class="status-msg" role="status"></span>
+  </div>
+
+  <section class="backups">
+    <h2 class="backups-title">Backups</h2>
+    <p class="config-hint">Elke keer dat je opslaat, wordt de vorige versie hier bewaard (laatste 30). Op &ldquo;Terugzetten&rdquo; klikken vult alleen de editor &mdash; je moet daarna nog zelf op Opslaan klikken.</p>
+    <ul id="backupsList" class="backups-list"></ul>
+  </section>
+</div>
+
+<script src="config.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+.config-page {
+  display: block;
+}
+
+.config-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 40px max(20px, env(safe-area-inset-left));
+}
+
+.config-top {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.back-link {
+  color: var(--accent-amber);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.back-link:hover { text-decoration: underline; }
+
+.config-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.config-hint {
+  margin: 8px 0 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.config-hint code {
+  color: var(--accent-amber);
+}
+
+.config-editor {
+  display: block;
+  width: 100%;
+  height: 55vh;
+  min-height: 320px;
+  resize: vertical;
+  background: var(--bg-panel-recess);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  padding: 14px;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+.config-editor:focus-visible {
+  outline: 2px solid var(--accent-amber);
+  outline-offset: 1px;
+}
+
+.config-editor.has-error {
+  outline: 2px solid var(--accent-red);
+  outline-offset: 1px;
+}
+
+.config-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 9px 16px;
+  min-height: 40px;
+  border-radius: 5px;
+  border: 1px solid var(--edge-light);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.btn:hover { border-color: var(--accent-amber-dim); }
+
+.btn-primary {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+  color: #1c1305;
+}
+
+.btn-primary:hover { background: #f0ac4c; }
+
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+.status-msg {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.status-msg.ok { color: var(--accent-green); }
+.status-msg.err { color: var(--accent-red); }
+
+.backups {
+  margin-top: 36px;
+  border-top: 1px solid var(--edge);
+  padding-top: 20px;
+}
+
+.backups-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.backups-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.backup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-panel);
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+}
+
+.backup-time {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.backup-restore {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  min-height: 30px;
+  font-size: 11.5px;
+}
+
+.backups-empty {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+}

@@ -120,14 +120,15 @@ select each input for a zone in ZonePRO Designer one at a time, and read the
 you sent for the router's example: 0=none, 1=Lobby Mic, 2=Phone Page, etc.
 — but only if your project uses that same ordering).
 
-Once you have them, edit `config.json`, e.g.:
+Once you have them, edit `config.json` — either by hand, or through the
+built-in editor at **`http://<host>:3001/config`** (see below), e.g.:
 
 ```json
 { "id": 2, "name": "Zone 2 \u2013 Patio", "object": "0x01050019" }
 ```
 
-Restart the server after editing the config — the zone will then appear
-automatically.
+Saving takes effect immediately, no restart needed — see "The `/config`
+editor" below.
 
 ## Pages
 
@@ -136,10 +137,35 @@ automatically.
   itself, bigger fader, good for a phone or a wall tablet dedicated to one
   room. Each zone strip on the main page has a small &#8599; link to jump
   to its own page.
+- `http://<host>:3001/config` — edit `config.json` directly from the
+  browser (see below).
 
 The layout is a responsive grid, not a fixed row, so it reflows into fewer
 columns automatically on a phone instead of requiring horizontal scrolling,
 and the fader thumb / mute button are sized for touch.
+
+## The `/config` editor
+
+`/config` shows the full contents of `config.json` in a text editor and
+saves it straight back to disk when you click **Opslaan** — no manual
+file editing or SSH needed.
+
+- **Backups happen automatically.** Every time you save, the previous
+  version is copied into `backups/` first (timestamped, last 30 kept). The
+  page lists them with a "Terugzetten in editor" button per backup — that
+  only loads it into the editor, it doesn't overwrite anything until you
+  click Save again.
+- **Validation before writing anything.** If the text isn't valid JSON, or
+  is missing required fields (`zonepro.ip`/`port`, `protocol`, `zones`),
+  saving is rejected with an error message and `config.json` on disk is
+  left untouched.
+- **Takes effect immediately.** No restart needed: the running server
+  reloads the new config, reconnects to the ZonePRO if the IP/port changed,
+  and pushes the updated zone list to every open browser tab (`/`, any
+  `/zoneN`) over the same WebSocket used for volume/mute sync — they update
+  live.
+- Existing zone volume/mute/input state is kept for zones that still exist
+  after a save; only newly added zones get fresh defaults.
 
 ## How it works
 
@@ -150,7 +176,11 @@ and the fader thumb / mute button are sized for touch.
 - `state.json` — last known volume/mute/input per zone, written after each
   command that was actually sent. Loaded on server start and sent to every
   browser as soon as it connects.
-- `public/` — the static UI (plain HTML/CSS/JS, no build step).
+- `backups/` — timestamped copies of `config.json`, one per save from the
+  `/config` editor (last 30 kept). Created automatically, safe to delete.
+- `public/` — the static UI (plain HTML/CSS/JS, no build step): `index.html`
+  /`app.js`/`style.css` for the control panel, `config.html`/`config.js`/
+  `config.css` for the `/config` editor.
 
 ### Volume mapping
 

@@ -9,7 +9,11 @@ const WebSocket = require('ws');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const STATE_PATH = path.join(__dirname, 'state.json');
+const BACKUPS_DIR = path.join(__dirname, 'backups');
+const MAX_BACKUPS = 30;
 const PORT = 3001;
+
+fs.mkdirSync(BACKUPS_DIR, { recursive: true });
 
 // ---------------------------------------------------------------------------
 // Config
@@ -63,6 +67,18 @@ function loadState() {
 
 let state = loadState();
 let saveTimer = null;
+
+// Called after a live config reload (via the /config editor) so zones that
+// already existed keep their current volume/mute/input, new zones get
+// sensible defaults, and removed zones are dropped.
+function reconcileStateWithConfig() {
+  const fresh = defaultState();
+  for (const id of Object.keys(fresh.zones)) {
+    if (state.zones[id]) fresh.zones[id] = { ...fresh.zones[id], ...state.zones[id] };
+  }
+  state = fresh;
+  persistState();
+}
 
 function persistState() {
   clearTimeout(saveTimer);
@@ -230,15 +246,19 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-app.get('/api/config', (req, res) => {
-  res.json({
+function publicConfig() {
+  return {
     zones: config.zones
       .filter((z) => !!z.object)
       .map((z) => ({ id: z.id, name: z.name, inputs: z.inputs || config.inputs || [] })),
     volumeMinDb: config.protocol.volumeMinDb,
     volumeMaxDb: config.protocol.volumeMaxDb,
     volumeStepDb: config.protocol.volumeStepDb,
-  });
+  };
+}
+
+app.get('/api/config', (req, res) => {
+  res.json(publicConfig());
 });
 
 app.get('/api/state', (req, res) => {
@@ -250,6 +270,116 @@ app.get('/api/state', (req, res) => {
 // zone number -- app.js decides whether it's actually configured.
 app.get(/^\/zone\d+\/?$/, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// /config -- the settings editor page.
+app.get('/config', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'config.html'));
+});
+
+// --- raw config.json editor API (used by /config) -------------------------
+
+function validateConfigShape(parsed) {
+  if (!parsed || typeof parsed !== 'object') return 'Config must be a JSON object.';
+  if (!parsed.zonepro || !parsed.zonepro.ip || !parsed.zonepro.port) {
+    return 'Missing "zonepro.ip" / "zonepro.port".';
+  }
+  if (!parsed.protocol || !parsed.protocol.destDevice || !parsed.protocol.srcDevice) {
+    return 'Missing required "protocol" fields (srcDevice/destDevice).';
+  }
+  if (!Array.isArray(parsed.zones) || parsed.zones.length === 0) {
+    return '"zones" must be a non-empty array.';
+  }
+  for (const z of parsed.zones) {
+    if (z.id === undefined || z.id === null) return 'Every zone needs an "id".';
+    if (!z.name) return `Zone ${z.id} is missing a "name".`;
+  }
+  return null;
+}
+
+function pruneBackups() {
+  const files = fs.readdirSync(BACKUPS_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .sort()
+    .reverse();
+  for (const f of files.slice(MAX_BACKUPS)) {
+    fs.unlinkSync(path.join(BACKUPS_DIR, f));
+  }
+}
+
+function backupFilename() {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return `config-${ts}.json`;
+}
+
+app.get('/api/config/raw', (req, res) => {
+  res.type('text/plain').send(fs.readFileSync(CONFIG_PATH, 'utf8'));
+});
+
+app.get('/api/config/backups', (req, res) => {
+  const files = fs.readdirSync(BACKUPS_DIR)
+    .filter((f) => f.endsWith('.json'))
+    .map((f) => {
+      const stat = fs.statSync(path.join(BACKUPS_DIR, f));
+      return { file: f, mtime: stat.mtime };
+    })
+    .sort((a, b) => b.mtime - a.mtime);
+  res.json(files);
+});
+
+app.get('/api/config/backups/:file', (req, res) => {
+  const safeName = path.basename(req.params.file);
+  const filePath = path.join(BACKUPS_DIR, safeName);
+  if (!filePath.startsWith(BACKUPS_DIR) || !fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Backup not found.' });
+  }
+  res.type('text/plain').send(fs.readFileSync(filePath, 'utf8'));
+});
+
+app.post('/api/config/raw', (req, res) => {
+  const raw = req.body && req.body.raw;
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return res.status(400).json({ error: 'No config text received.' });
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    return res.status(400).json({ error: `Invalid JSON: ${err.message}` });
+  }
+
+  const shapeError = validateConfigShape(parsed);
+  if (shapeError) {
+    return res.status(400).json({ error: shapeError });
+  }
+
+  const previousIp = config.zonepro.ip;
+  const previousPort = config.zonepro.port;
+
+  try {
+    // Back up the config as it currently is on disk before overwriting it.
+    fs.copyFileSync(CONFIG_PATH, path.join(BACKUPS_DIR, backupFilename()));
+    pruneBackups();
+    fs.writeFileSync(CONFIG_PATH, raw);
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to save: ${err.message}` });
+  }
+
+  config = parsed;
+  reconcileStateWithConfig();
+
+  if (parsed.zonepro.ip !== previousIp || parsed.zonepro.port !== previousPort) {
+    console.log('[zonepro] address changed, reconnecting...');
+    clearTimeout(reconnectTimer);
+    if (socket) socket.destroy();
+    connectZonePro();
+  }
+
+  broadcast({ type: 'config', config: publicConfig() });
+  broadcast({ type: 'state', state, connected });
+
+  res.json({ ok: true });
 });
 
 const server = http.createServer(app);
