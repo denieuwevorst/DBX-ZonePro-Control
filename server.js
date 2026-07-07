@@ -6,6 +6,7 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const WebSocket = require('ws');
+const mqttBridge = require('./mqtt-bridge');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const STATE_PATH = path.join(__dirname, 'state.json');
@@ -294,6 +295,9 @@ function validateConfigShape(parsed) {
     if (z.id === undefined || z.id === null) return 'Every zone needs an "id".';
     if (!z.name) return `Zone ${z.id} is missing a "name".`;
   }
+  if (parsed.mqtt && parsed.mqtt.enabled && !parsed.mqtt.host) {
+    return '"mqtt.enabled" is true but "mqtt.host" is empty.';
+  }
   return null;
 }
 
@@ -378,6 +382,7 @@ app.post('/api/config/raw', (req, res) => {
 
   broadcast({ type: 'config', config: publicConfig() });
   broadcast({ type: 'state', state, connected });
+  mqttBridge.refresh(config);
 
   res.json({ ok: true });
 });
@@ -392,8 +397,17 @@ function broadcast(msg) {
   });
 }
 
+// Called after any successful volume/mute/input change, regardless of
+// whether it came from the web UI (WebSocket) or Home Assistant (MQTT), so
+// both stay in sync no matter which one triggered the change.
+function notifyChanged(zoneId) {
+  broadcast({ type: 'state', state, connected });
+  mqttBridge.publishZoneState(zoneId);
+}
+
 function broadcastStatus() {
   broadcast({ type: 'status', connected });
+  mqttBridge.publishLink(connected);
 }
 
 wss.on('connection', (ws) => {
@@ -409,13 +423,13 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'volume' && zoneById(msg.zone)) {
       const ok = setVolume(msg.zone, Number(msg.db));
-      if (ok) broadcast({ type: 'state', state, connected });
+      if (ok) notifyChanged(msg.zone);
     } else if (msg.type === 'mute' && zoneById(msg.zone)) {
       const ok = setMute(msg.zone, !!msg.muted);
-      if (ok) broadcast({ type: 'state', state, connected });
+      if (ok) notifyChanged(msg.zone);
     } else if (msg.type === 'input' && zoneById(msg.zone)) {
       const ok = setInput(msg.zone, msg.value);
-      if (ok) broadcast({ type: 'state', state, connected });
+      if (ok) notifyChanged(msg.zone);
     }
   });
 });
@@ -425,3 +439,13 @@ server.listen(PORT, () => {
 });
 
 connectZonePro();
+
+mqttBridge.init(config, {
+  setVolume,
+  setMute,
+  setInput,
+  zoneById,
+  getState: () => state,
+  isZoneProConnected: () => connected,
+  onChanged: notifyChanged,
+});

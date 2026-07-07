@@ -36,6 +36,17 @@
   ],
   "_comment_inputs": "Default list of selectable sources shown in every zone's input dropdown, value = the raw byte the ZonePRO expects for that source on a router object (0 = no source selected). This list is a starting point from the dbx guide's own example router -- the actual sources and their numbers depend entirely on your ZonePRO Designer configuration, so rename/reorder/add/remove entries here to match your setup (capture a MultiSVSet for each source in the Network Trace window to find its number, same way Zone 1's object ID was found). Set this to an empty array [] (or a zone's own \"inputs\": []) to hide the SRC dropdown everywhere, or for just that zone.",
 
+  "mqtt": {
+    "enabled": false,
+    "host": "",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "discoveryPrefix": "homeassistant",
+    "baseTopic": "zonepro"
+  },
+  "_comment_mqtt": "Optional: publishes every zone to Home Assistant via MQTT discovery (a number for volume, a switch for mute, a select for input source per zone, plus a binary_sensor for the ZonePRO link status). Runs alongside the web UI, not instead of it -- both control the same zones and stay in sync either way. Set enabled=true and fill in host (e.g. the IP of your Mosquitto broker / the HA host if you used the Mosquitto Broker add-on) and port (1883 by default). Leave username/password empty if your broker doesn't require auth. Takes effect immediately after saving here, no restart needed.",
+
   "zones": [
     { "id": 1, "name": "Zone 1 \u2013 Cafe", "object": "0x01050018" },
     { "id": 2, "name": "Zone 2", "object": null },

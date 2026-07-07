@@ -167,6 +167,64 @@ file editing or SSH needed.
 - Existing zone volume/mute/input state is kept for zones that still exist
   after a save; only newly added zones get fresh defaults.
 
+## Home Assistant integration (MQTT)
+
+This runs **alongside** the web UI, not instead of it — the exact same
+`setVolume`/`setMute`/`setInput` functions and the same `state.json` are
+shared by both, so a change from Home Assistant, from `/`, from `/zoneN`,
+or from a `MultiSVSet` you send some other way, all stay in sync.
+
+For every zone with an `object` configured, three entities get created
+automatically in Home Assistant via MQTT discovery:
+
+- **Volume** — a `number` entity (slider), in dB, matching the min/max/step
+  from `config.json`.
+- **Mute** — a `switch`.
+- **Source** — a `select`, with that zone's `inputs[]` names as the
+  dropdown options (skipped if the zone has no inputs configured).
+
+Plus one extra entity, not tied to a specific zone:
+
+- **ZonePRO Link** — a `binary_sensor` (connectivity), reflecting whether
+  the server currently has a live TCP connection to the ZonePRO unit
+  itself — the same thing the status pill on the web UI shows. All of a
+  zone's entities go "unavailable" in HA when this is off, or when the
+  server process itself isn't reachable (via MQTT's birth/last-will
+  message), so you don't get stale readings.
+
+### Setup
+
+1. You need an MQTT broker. Easiest option: install the **Mosquitto
+   broker** add-on/app from Home Assistant's Settings → Add-ons, then add
+   the **MQTT** integration (Settings → Devices & services) — it can
+   auto-configure itself against that broker.
+2. Open **`/config`** on the ZonePRO panel and fill in the `mqtt` section:
+
+   ```json
+   "mqtt": {
+     "enabled": true,
+     "host": "192.168.1.10",
+     "port": 1883,
+     "username": "",
+     "password": "",
+     "discoveryPrefix": "homeassistant",
+     "baseTopic": "zonepro"
+   }
+   ```
+
+   `host` is wherever your broker runs (often the same machine as Home
+   Assistant if you used the Mosquitto add-on). Leave `username`/
+   `password` empty if the broker doesn't require auth. Save — it connects
+   immediately, no restart needed.
+3. In Home Assistant, the zones should appear within a few seconds under
+   **Settings → Devices & services → MQTT** (one device per zone, plus a
+   "ZonePRO Control" device for the link sensor). If MQTT discovery is
+   disabled in your HA's MQTT integration settings, turn it back on there
+   first.
+
+`discoveryPrefix`/`baseTopic` only need changing if `homeassistant`/
+`zonepro` clash with something else already using your broker.
+
 ## How it works
 
 - `server.js` — Express serves the UI, holds one persistent TCP connection
@@ -181,6 +239,8 @@ file editing or SSH needed.
 - `public/` — the static UI (plain HTML/CSS/JS, no build step): `index.html`
   /`app.js`/`style.css` for the control panel, `config.html`/`config.js`/
   `config.css` for the `/config` editor.
+- `mqtt-bridge.js` — the optional Home Assistant/MQTT bridge (see above),
+  only active when `mqtt.enabled` is true in `config.json`.
 
 ### Volume mapping
 
