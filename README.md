@@ -225,6 +225,30 @@ Plus one extra entity, not tied to a specific zone:
 `discoveryPrefix`/`baseTopic` only need changing if `homeassistant`/
 `zonepro` clash with something else already using your broker.
 
+## `/ha-dashboard` — auto-generated Lovelace dashboard
+
+Once the MQTT entities exist in Home Assistant, **`http://<host>:3001/ha-dashboard`**
+generates the full Lovelace YAML for a nice dashboard from your current
+`config.json` — no hand-written YAML needed:
+
+- A **"Zones"** view: one volume slider + mute toggle + source dropdown
+  tile-group per zone (the entity IDs are derived automatically from each
+  zone's id, e.g. `number.zonepro_zone1_volume`).
+- A **"Bronnen"** view: a grid of one-tap buttons per input, per zone that
+  has inputs configured — for a fast "just tap the source" panel instead of
+  a dropdown.
+
+Click **Kopiëren** (copy) or **Downloaden** (download as `.yaml`), then in
+Home Assistant: **Settings → Dashboards → Add dashboard → New dashboard
+from scratch**, open it, three-dot menu → **Edit in YAML**, paste. Adding
+it into an existing dashboard instead works the same way — just merge the
+generated `views:` entries into what's already there.
+
+This regenerates from the live config every time you load the page, so
+after adding/renaming a zone or its inputs via `/config`, just reload
+`/ha-dashboard` and re-import to keep it in sync — nothing to maintain by
+hand.
+
 ## How it works
 
 - `server.js` — Express serves the UI, holds one persistent TCP connection
@@ -241,6 +265,8 @@ Plus one extra entity, not tied to a specific zone:
   `config.css` for the `/config` editor.
 - `mqtt-bridge.js` — the optional Home Assistant/MQTT bridge (see above),
   only active when `mqtt.enabled` is true in `config.json`.
+- `ha-dashboard.js` — generates the `/ha-dashboard` Lovelace YAML from the
+  current config, on every request (nothing cached/stored).
 
 ### Volume mapping
 
@@ -266,3 +292,11 @@ MsgID, Flags, Payload`. The Src object field mirrors the Dest object field
 - Slider drags are throttled (~80ms) before hitting the network so dragging
   doesn't flood the ZonePRO with commands; the final position is always
   sent.
+- The TCP connection to the ZonePRO uses keep-alive, so if the unit loses
+  power, reboots, or the network link drops silently (no clean TCP close),
+  the server still notices and reconnects automatically — typically within
+  a few seconds to under a minute, plus the usual 5s retry interval,
+  depending on how quickly the OS's keep-alive probes catch it. Any command
+  sent while the link is actually down is retried automatically too: a
+  failed write immediately forces a fresh reconnect attempt rather than
+  waiting for the next probe.

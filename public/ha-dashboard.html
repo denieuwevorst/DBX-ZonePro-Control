@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#19191b">
+<title>HA dashboard &middot; ZonePRO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="config.css">
+</head>
+<body class="config-page">
+
+<div class="config-wrap">
+  <div class="config-top">
+    <a class="back-link" href="/config">&larr; Config</a>
+    <h1 class="config-title">Home Assistant dashboard</h1>
+  </div>
+
+  <p class="config-hint">
+    Automatisch gegenereerd uit <code>config.json</code>: een tabblad
+    &ldquo;Zones&rdquo; met volume/mute/bron per zone, en een tabblad
+    &ldquo;Bronnen&rdquo; met losse knoppen per ingang. Wijzig je zones of
+    inputs via <a href="/config">/config</a>, klik hier op &ldquo;Vernieuwen&rdquo;
+    en de YAML klopt weer.
+  </p>
+
+  <textarea id="editor" class="config-editor" spellcheck="false" readonly aria-label="Home Assistant dashboard YAML"></textarea>
+
+  <div class="config-toolbar">
+    <button id="copyBtn" class="btn btn-primary" type="button">Kopi&euml;ren</button>
+    <button id="downloadBtn" class="btn" type="button">Downloaden</button>
+    <button id="refreshBtn" class="btn" type="button">Vernieuwen</button>
+    <span id="statusMsg" class="status-msg" role="status"></span>
+  </div>
+
+  <section class="backups">
+    <h2 class="backups-title">Importeren in Home Assistant</h2>
+    <p class="config-hint">
+      Nieuw dashboard: <strong>Instellingen &rarr; Dashboards &rarr; Dashboard toevoegen &rarr; Nieuw dashboard vanaf nul</strong>,
+      open het &middot; drie puntjes rechtsboven &middot; <strong>Bewerken in YAML</strong>, en plak de inhoud hierboven.<br><br>
+      Toevoegen aan een bestaand dashboard: open dat dashboard &middot; drie puntjes &middot; <strong>Bewerken in YAML</strong>,
+      en voeg de <code>views</code> hieronder samen met wat er al staat (kopieer de items uit de <code>views:</code>-lijst).
+    </p>
+  </section>
+</div>
+
+<script src="ha-dashboard.js"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ const http = require('http');
 const express = require('express');
 const WebSocket = require('ws');
 const mqttBridge = require('./mqtt-bridge');
+const { buildDashboard } = require('./ha-dashboard');
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const STATE_PATH = path.join(__dirname, 'state.json');
@@ -110,6 +111,16 @@ function connectZonePro() {
     broadcastStatus();
   });
 
+  // Without this, a connection that dies silently (ZonePRO loses power,
+  // reboots, or the network link drops) can sit "open" on our end forever
+  // -- no data ever flows either way on an otherwise-idle link, so there's
+  // nothing to trigger a normal error/close event. TCP keep-alive makes the
+  // OS actively probe the connection; once the ZonePRO is truly gone (or
+  // comes back up with a fresh TCP stack that doesn't recognize this old
+  // connection and answers with a reset), that probe fails and we get a
+  // proper 'close' event, which is what actually drives the reconnect below.
+  socket.setKeepAlive(true, 10000);
+
   socket.on('error', (err) => {
     console.error('[zonepro] socket error:', err.message);
   });
@@ -172,7 +183,12 @@ function sendPacket(buf) {
     console.warn('[zonepro] not connected, dropping command');
     return false;
   }
-  socket.write(buf);
+  socket.write(buf, (err) => {
+    if (err) {
+      console.error('[zonepro] write failed, forcing reconnect:', err.message);
+      socket.destroy(); // triggers the 'close' handler, which schedules a reconnect
+    }
+  });
   return true;
 }
 
@@ -276,6 +292,19 @@ app.get(/^\/zone\d+\/?$/, (req, res) => {
 // /config -- the settings editor page.
 app.get('/config', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'config.html'));
+});
+
+// /ha-dashboard -- shows the auto-generated Home Assistant dashboard YAML.
+app.get('/ha-dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'ha-dashboard.html'));
+});
+
+app.get('/api/ha-dashboard', (req, res) => {
+  try {
+    res.type('text/plain').send(buildDashboard(config));
+  } catch (err) {
+    res.status(500).json({ error: `Failed to build dashboard: ${err.message}` });
+  }
 });
 
 // --- raw config.json editor API (used by /config) -------------------------
